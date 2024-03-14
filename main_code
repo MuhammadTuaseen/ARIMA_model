@@ -1,0 +1,161 @@
+import numpy as np
+import pandas as pd
+
+import matplotlib.pyplot as plt
+%matplotlib inline
+df=pd.read_csv('B_Burger_q.csv', index_col= 'Date', parse_dates = True)
+print('Shape of Data', df.shape)
+df.head()
+
+df['Quantity'].plot(figsize=(12,5))
+df.tail()
+df = df.sort_values(by='Date')
+# Aggregate the data by date and item name
+aggregated_data = df.groupby(['Date', 'Item Name']).sum()['Quantity'].reset_index()
+print(aggregated_data)
+# Create a pivot table to reshape the data for multivariate time series forecasting
+df = aggregated_data.pivot(index='Date', columns='Item Name', values='Quantity').fillna(0)
+print(df)
+df.describe()
+df.plot(figsize=(20, 12))
+## Testing For Stationarity
+
+from statsmodels.tsa.stattools import adfuller
+test_result=adfuller(df)
+#Ho: It is non stationary
+#H1: It is stationary
+def adfuller_test(dataframe):
+    for column in dataframe.columns:
+        result = adfuller(dataframe[column])
+        labels = ['ADF Test Statistic', 'p-value', '#Lags Used', 'Number of Observations Used']
+        print(f"Results for column '{column}':")
+        for value, label in zip(result, labels):
+            print(f"\t{label}: {value}")
+        if result[1] <= 0.05:
+            print(f"\tStrong evidence against the null hypothesis(Ho) for {column}, reject the null hypothesis.")
+            print("\tData has no unit root and is stationary.")
+        else:
+            print(f"\tWeak evidence against null hypothesis for {column}.")
+            print("\tTime series has a unit root, indicating it is non-stationary.")
+
+# Call the function with the entire DataFrame
+adfuller_test(df)
+
+
+df['Quantity First Difference'] = df['Beef Burger'].diff()#yahan change hoga
+
+
+display(df)
+
+
+display(df)
+## Again test dickey fuller test
+adfuller_test(df.dropna())
+df['Quantity First Difference'].plot(figsize=(20, 12))
+import pandas as pd
+import matplotlib.pyplot as plt
+from pandas.plotting import autocorrelation_plot
+
+# Assuming df is already defined with a 'Quantity' column
+autocorrelation_plot(df['Beef Burger'])#yahan change hoga
+plt.show()
+from statsmodels.graphics.tsaplots import plot_acf,plot_pacf
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+
+fig = plt.figure(figsize=(12,8))
+ax1 = fig.add_subplot(211)
+fig = sm.graphics.tsa.plot_acf(df['Quantity First Difference'].iloc[13:],lags=40,ax=ax1)
+ax2 = fig.add_subplot(212)
+fig = sm.graphics.tsa.plot_pacf(df['Quantity First Difference'].iloc[13:],lags=40,ax=ax2)
+# For non-seasonal data
+#p=1, d=1, q=0 or 1
+from statsmodels.tsa.arima_model import ARIMA
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+
+# Assuming df is already defined with a 'Quantity' column
+# Replace 'Quantity' with the correct column name from your DataFrame
+
+# Create ARIMA model
+model = sm.tsa.arima.ARIMA(df['Beef Burger'], order=(1, 1, 1))  # p=1, d=1, q=1
+                             #yahan change hoga
+# Fit the model
+model_fit = model.fit()
+
+# Print summary
+print(model_fit.summary())
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+
+# Assuming df is already defined with a 'Quantity' column
+# Replace 'Quantity' with the correct column name from your DataFrame
+
+# Create SARIMAX model
+model = sm.tsa.SARIMAX(df['Beef Burger'], order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))  # p=1, d=1, q=1, seasonal_order=(P, D, Q, S)
+                       #yahan change hoga
+# Fit the model
+model_fit = model.fit()
+
+# Make forecast
+start_index = 90
+end_index = 103
+forecast = model_fit.predict(start=start_index, end=end_index, dynamic=True)
+
+# Add forecast values to df
+df['forecast'] = None  # Initialize the forecast column
+df.iloc[start_index:end_index+1, df.columns.get_loc('forecast')] = forecast  # Use iloc for positional slicing
+
+# Ensure the index of df is a datetime index
+df.index = pd.to_datetime(df.index)
+
+# Get the last date from the DataFrame's index
+last_date = df.index[-1]
+
+# Generate future dates
+future_dates = [last_date + pd.DateOffset(months=x) for x in range(1, 25)]  # Generate 24 future dates
+
+# Plot Quantity and forecast
+plt.figure(figsize=(12, 8))
+plt.plot(df.index, df['Beef Burger'], label='Actual')#yahan change hoga
+plt.plot(df.index, df['forecast'], label='Forecast', linestyle='--')
+plt.xlabel('Date')
+plt.ylabel('Beef Burger')#yahan change hoga
+plt.title('Actual vs Forecast')
+plt.legend()
+
+# Plotting future forecasts
+future_forecast = model_fit.forecast(steps=24)  # Forecasting 24 steps into the future
+
+# Create a DataFrame for future dates and forecasts
+future_df = pd.DataFrame({'Date': future_dates, 'Forecast': future_forecast})
+
+# Calculate and add 'Value_in_Rs' column
+unit_value = 1000  # Assuming 540 is the unit value #yahan pe list price ke according change hogi price 
+future_df['Value_in_Rs'] = future_df['Forecast'] * unit_value
+
+# Round off 'Forecast' and 'Value_in_Rs' columns
+future_df['Forecast'] = future_df['Forecast'].round()
+future_df['Value_in_Rs'] = (future_df['Forecast'] * unit_value).round()
+
+# Save to CSV
+future_df.to_csv('beef_burger_forecasts.csv', index=False)#yahan change hoga
+
+# Print and show the forecasts
+print("Future Forecasts:")
+print(future_df)
+
+# Plotting the graph with future forecasts
+plt.figure(figsize=(12, 8))
+plt.plot(df.index, df['Beef Burger'], label='Actual') #yahan change hoga
+plt.plot(df.index, df['forecast'], label='Forecast', linestyle='--')
+plt.plot(future_df['Date'], future_df['Forecast'], label='Future Forecast', linestyle='--')
+plt.xlabel('Date')
+plt.ylabel('Beef Burger')         #yahan change hoga
+plt.title('Future Forecast')
+plt.legend()
+
+plt.show()
